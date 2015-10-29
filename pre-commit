@@ -1,0 +1,42 @@
+#!/bin/bash
+
+DEBUG_FUNCTIONS_PHP='var_dump\(|phpinfo\(|print_r\(|dump\(|die\(dump\(|var_export\('
+DEBUG_FUNCTIONS_JS='console\.info\(|console\.log\('
+DEBUG_FUNCTIONS_TWIG='dump\('
+
+MUST_DIE=false
+
+
+for PHP_FILE in $(git diff --cached --name-status | grep -v '^D' | awk '$1 != "R" { print $2 }' | grep '.php$'); do
+    if [ "$(egrep -n --regexp="(${DEBUG_FUNCTIONS_PHP})" "${PHP_FILE}")" ]; then
+        echo "${PHP_FILE} Contains debug functions!"
+        MUST_DIE=true
+    fi
+done
+
+for JS_FILE in $(git diff --cached --name-status | grep -v '^D' | awk '$1 != "R" { print $2 }' | grep '.js$'); do
+    if [ "$(egrep -n --regexp="(${DEBUG_FUNCTIONS_JS})" "${JS_FILE}")" ]; then
+        echo "${JS_FILE} Contains debug functions!"
+        MUST_DIE=true
+    fi
+done
+
+for TWIG_FILE in $(git diff --cached --name-status | grep -v '^D' | awk '$1 != "R" { print $2 }' | grep '.twig$'); do
+    if [ "$(egrep -n --regexp="(${DEBUG_FUNCTIONS_TWIG})" "${TWIG_FILE}")" ]; then
+        echo "${TWIG_FILE} Contains debug functions!"
+        MUST_DIE=true
+    fi
+done
+
+if [ $MUST_DIE = true ]; then
+  echo "You have not been TIDY with your code man. Commit aborted."
+  exit 1
+else
+  echo "Good boy. no debug functions on your code."
+fi
+
+
+for phpito in $(git diff --cached --name-status | grep -v '^D' | awk '$1 != "R" { print $2 }' | grep '.php$'); do
+  /usr/local/bin/php-cs-fixer fix -v --fixers=concat_with_spaces,-concat_without_spaces $PWD/$phpito
+  git add $PWD/$phpito
+done
